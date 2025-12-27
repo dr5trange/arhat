@@ -1,0 +1,366 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.game-container {
+    width: 100vw;
+    height: 100vh;
+    background: #333;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    padding: 10px 15px;
+    text-align: center;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.header h1 {
+    font-size: 2em;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.game-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    align-items: center;
+}
+
+.score, .timer, .speed-display {
+    font-size: 1.3em;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    padding: 5px 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+}
+
+.sound-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.sound-btn:hover {
+    transform: scale(1.1);
+}
+
+.sound-btn:active {
+    transform: scale(0.9);
+}
+
+.game-area {
+    width: 100%;
+    flex: 1;
+    background: #2c5234;
+    position: relative;
+    overflow: hidden;
+}
+
+.road {
+    width: 400px;
+    height: 100%;
+    background: #444;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid #fff;
+    border-right: 8px solid #fff;
+}
+
+.road-marking {
+    width: 8px;
+    height: 60px;
+    background: #ffff00;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: roadMove 1s linear infinite;
+}
+
+.road-marking:nth-child(1) { top: 0%; }
+.road-marking:nth-child(2) { top: 20%; }
+.road-marking:nth-child(3) { top: 40%; }
+.road-marking:nth-child(4) { top: 60%; }
+.road-marking:nth-child(5) { top: 80%; }
+
+@keyframes roadMove {
+    from { transform: translateX(-50%) translateY(-60px); }
+    to { transform: translateX(-50%) translateY(100vh); }
+}
+
+/* Speed-based road animation classes */
+.speed-1 .road-marking { animation-duration: 2.5s; }
+.speed-2 .road-marking { animation-duration: 1.8s; }
+.speed-3 .road-marking { animation-duration: 1s; }
+.speed-4 .road-marking { animation-duration: 0.7s; }
+.speed-5 .road-marking { animation-duration: 0.5s; }
+
+.player-car {
+    position: absolute;
+    font-size: 4em;
+    left: 50%;
+    bottom: 15vh;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    transition: all 0.1s ease;
+}
+
+.obstacle {
+    position: absolute;
+    font-size: 3em;
+    z-index: 5;
+    animation: moveDown 3s linear infinite;
+}
+
+.star {
+    position: absolute;
+    font-size: 2.5em;
+    z-index: 5;
+    animation: moveDown 4s linear infinite;
+}
+
+@keyframes moveDown {
+    from { transform: translateY(-80px); }
+    to { transform: translateY(100vh); }
+}
+
+.instructions {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-width: 500px;
+}
+
+.instructions h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.instruction-section {
+    background: rgba(240, 248, 255, 0.8);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 15px 0;
+}
+
+.speed-selector {
+    background: rgba(255, 248, 220, 0.9);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 15px 0;
+}
+
+.speed-selector h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.speed-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.speed-btn {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid #ddd;
+    color: #333;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-width: 60px;
+}
+
+.speed-btn span {
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #666;
+}
+
+.speed-btn:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #4ECDC4;
+    transform: scale(1.05);
+}
+
+.speed-btn.active {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    border-color: #FF6B6B;
+    color: white;
+    transform: scale(1.1);
+}
+
+.speed-btn.active span {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.speed-hint {
+    margin-top: 15px;
+    font-size: 1em;
+    color: #666;
+    font-style: italic;
+}
+
+.instructions p {
+    font-size: 1.1em;
+    margin: 8px 0;
+    color: #333;
+}
+
+.game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.game-over h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.game-over p {
+    font-size: 1.3em;
+    margin: 10px 0;
+    color: #333;
+}
+
+.instructions button, .game-over button {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    border: none;
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.3em;
+    border-radius: 50px;
+    cursor: pointer;
+    margin-top: 15px;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.instructions button:hover, .game-over button:hover {
+    transform: scale(1.05);
+}
+
+.instructions button:active, .game-over button:active {
+    transform: scale(0.95);
+}
+
+.controls {
+    position: absolute;
+    bottom: 2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    text-align: center;
+    font-size: 1em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+}
+
+.key-hints {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    align-items: center;
+}
+
+.hint-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.hint-group span {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.keys {
+    display: flex;
+    gap: 3px;
+}
+
+kbd {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'Arial', monospace;
+    font-size: 0.9em;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 1px solid #ccc;
+}
+
+.celebration {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3em;
+    color: #FFD700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    animation: celebrate 0.5s ease;
+    z-index: 50;
+    pointer-events: none;
+}
+
+@keyframes celebrate {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}

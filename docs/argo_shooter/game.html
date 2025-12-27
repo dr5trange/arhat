@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoot & Learn - Letter Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            background: linear-gradient(180deg, #87CEEB 0%, #90EE90 100%);
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #playerSelect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .character-btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            border: none;
+            border-radius: 10px;
+            padding: 15px 25px;
+            margin: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .character-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .character-btn.mikey {
+            background: linear-gradient(45deg, #4ECDC4, #44A08D);
+        }
+
+        #shop {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 100;
+            display: none;
+            max-width: 500px;
+        }
+
+        .weapon-btn {
+            background: linear-gradient(45deg, #6C5CE7, #A29BFE);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 5px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .weapon-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .weapon-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 100;
+            display: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+
+        <div id="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div>Level: <span id="level">1</span></div>
+            <div>Misses: <span id="misses">0</span>/3</div>
+            <div>Weapon: <span id="currentWeapon">Brick</span></div>
+        </div>
+
+        <div id="playerSelect">
+            <h2>Choose Your Character!</h2>
+            <p>Select your hero for this adventure:</p>
+            <button class="character-btn mikey" onclick="selectCharacter('mikey')">
+                🟢 Mikey (Green Hero)
+            </button>
+            <button class="character-btn" onclick="selectCharacter('jj')">
+                🔴 JJ (Red Hero)
+            </button>
+        </div>
+
+        <div id="shop">
+            <h2>🛒 Weapon Shop</h2>
+            <p>Choose your next weapon!</p>
+            <div id="weaponList"></div>
+            <button onclick="closeShop()" style="margin-top: 15px; padding: 10px 20px; background: #27AE60; color: white; border: none; border-radius: 5px; cursor: pointer;">Continue to Next Level</button>
+            <p style="margin-top: 10px; font-size: 14px; color: #666;">Press ENTER to continue or hover weapons to preview</p>
+        </div>
+
+        <div id="gameOver">
+            <h2>Game Over!</h2>
+            <p id="finalScore"></p>
+            <button onclick="restartGame()" style="padding: 10px 20px; background: #3498DB; color: white; border: none; border-radius: 5px; cursor: pointer;">Play Again</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
