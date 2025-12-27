@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoot & Learn Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 20px;
+            max-width: 1000px;
+            width: 95%;
+        }
+
+        canvas {
+            border: 3px solid #4CAF50;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .title {
+            text-align: center;
+            color: #2E8B57;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1.2em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">🎯 Shoot & Learn Adventure 🎯</h1>
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div class="controls">
+            Click to choose your character and start playing!
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
