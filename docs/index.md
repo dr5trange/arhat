@@ -9,7 +9,7 @@ Welcome! Choose a game to play:
 
 <div style="margin-top: 2rem;">
   <div style="margin-bottom: 2rem;">
-    <h2><a href="/arhat/argo_shooter/">🎮 Argo Shooter</a></h2>
+    <h2><a href="/arhat/argo_shooter/game.html">🎮 Argo Shooter</a></h2>
     <p>An arcade-style space shooter game. Defend against incoming enemies and rack up your score!</p>
   </div>
   
