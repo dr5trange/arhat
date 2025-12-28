@@ -1,502 +1,453 @@
 class RacingTutorGame {
     constructor() {
-        this.gameArea = document.getElementById('gameArea');
-        this.playerCar = document.getElementById('playerCar');
-        this.scoreElement = document.getElementById('score');
-        this.timerElement = document.getElementById('timer');
-        this.instructions = document.getElementById('instructions');
-        this.gameOver = document.getElementById('gameOver');
-        this.playAgainBtn = document.getElementById('playAgainBtn');
-        this.soundToggle = document.getElementById('soundToggle');
-        this.finalScore = document.getElementById('finalScore');
-        this.performanceMessage = document.getElementById('performanceMessage');
-        this.speedLevelDisplay = document.getElementById('speedLevel');
-
-        this.gameWidth = window.innerWidth;
-        this.gameHeight = window.innerHeight;
-        this.roadWidth = 400;
-        this.roadLeft = (this.gameWidth - this.roadWidth) / 2;
-
-        // Game state
+        this.gameState = 'menu';
         this.score = 0;
-        this.gameRunning = false;
-        this.gameTimeMs = 120000; // 2 minutes in milliseconds
-        this.timeRemaining = this.gameTimeMs;
-        this.startTime = 0;
+        this.timeRemaining = 120;
+        this.level = 1;
+        this.levelProgress = 0;
+        this.starsToNextLevel = 10;
+        this.carPosition = 1;
+        this.gameItems = [];
+        this.keys = {};
+        this.isPaused = false;
+        this.gameSpeed = 1;
+        this.soundEnabled = true;
 
-        // Game objects
-        this.obstacles = [];
-        this.stars = [];
-        this.baseGameSpeed = 3; // Current speed becomes level 5
-        this.speedLevel = 3; // Default to medium speed
-        this.gameSpeed = this.calculateGameSpeed();
-
-        // Player car auto-movement
-        this.carLane = 1; // 0=left, 1=center, 2=right
-        this.carPosition = {
-            x: this.gameWidth / 2,
-            y: this.gameHeight * 0.85 // 15% from bottom
-        };
-
-        // Dodge mechanics
-        this.dodging = false;
-        this.dodgeStartTime = 0;
-        this.dodgeDuration = 500; // ms
+        this.baseItemSpeed = 2;
+        this.baseSpawnRate = 0.02;
 
         this.init();
     }
 
     init() {
-        this.playAgainBtn.addEventListener('click', () => this.resetGame());
-        this.soundToggle.addEventListener('click', () => this.toggleSound());
-        this.setupSpeedSelector();
-        this.setupKeyboard();
-        this.updateCarPosition();
-        this.updateTimer();
-        this.updateSpeedDisplay();
-        this.updateVisualSpeed();
-        this.setupWindowResize();
+        this.setupEventListeners();
+        this.setupElements();
+        this.soundManager = new SoundManager();
     }
 
-    calculateGameSpeed() {
-        // Speed level 1 = 0.6x, level 2 = 0.8x, level 3 = 1x, level 4 = 1.2x, level 5 = 1.5x
-        const speedMultipliers = {
-            1: 0.4,  // Very slow
-            2: 0.7,  // Slow
-            3: 1.0,  // Medium (original speed)
-            4: 1.3,  // Fast
-            5: 1.7   // Very fast (current becomes level 5)
+    setupElements() {
+        this.elements = {
+            gameContainer: document.getElementById('game-container'),
+            startScreen: document.getElementById('start-screen'),
+            pauseScreen: document.getElementById('pause-screen'),
+            levelUpScreen: document.getElementById('level-up-screen'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            road: document.getElementById('road'),
+            car: document.getElementById('car'),
+            scoreDisplay: document.getElementById('score'),
+            timerDisplay: document.getElementById('timer'),
+            levelDisplay: document.getElementById('level-display'),
+            levelProgressBar: document.getElementById('level-progress-bar'),
+            soundToggle: document.getElementById('sound-toggle'),
+            pauseBtn: document.getElementById('pause-btn')
         };
-        return this.baseGameSpeed * speedMultipliers[this.speedLevel];
     }
 
-    setupSpeedSelector() {
-        const speedButtons = document.querySelectorAll('.speed-btn');
-        speedButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const speed = parseInt(button.dataset.speed);
-                this.setSpeedLevel(speed);
+    setupEventListeners() {
+        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        document.addEventListener('keyup', (e) => this.handleKeyUp(e));
 
-                // Update active button
-                speedButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+        document.getElementById('start-btn').addEventListener('click', () => this.startGame());
+        document.getElementById('resume-btn').addEventListener('click', () => this.resumeGame());
+        document.getElementById('restart-btn').addEventListener('click', () => this.restartGame());
+        document.getElementById('continue-btn').addEventListener('click', () => this.continueLevelUp());
+        document.getElementById('play-again-btn').addEventListener('click', () => this.restartGame());
 
-                // Start the game immediately
-                this.startGame();
-            });
-        });
+        document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
+        document.getElementById('pause-btn').addEventListener('click', () => this.pauseGame());
     }
 
-    setSpeedLevel(level) {
-        this.speedLevel = level;
-        this.gameSpeed = this.calculateGameSpeed();
-        this.updateSpeedDisplay();
-        this.updateVisualSpeed();
-    }
+    handleKeyDown(e) {
+        if (this.gameState !== 'playing' || this.isPaused) return;
 
-    updateSpeedDisplay() {
-        this.speedLevelDisplay.textContent = this.speedLevel;
-    }
+        this.keys[e.key.toLowerCase()] = true;
 
-    updateVisualSpeed() {
-        // Remove existing speed classes
-        for (let i = 1; i <= 5; i++) {
-            this.gameArea.classList.remove(`speed-${i}`);
+        if (['a', 's', 'd'].includes(e.key.toLowerCase())) {
+            this.handleLaneChange(e.key.toLowerCase());
+        } else if (this.isValidCollectionKey(e.key)) {
+            this.handleStarCollection(e.key);
         }
-        // Add current speed class
-        this.gameArea.classList.add(`speed-${this.speedLevel}`);
+
+        e.preventDefault();
     }
 
-    setupWindowResize() {
-        window.addEventListener('resize', () => {
-            this.gameWidth = window.innerWidth;
-            this.gameHeight = window.innerHeight;
-            this.roadLeft = (this.gameWidth - this.roadWidth) / 2;
-            this.carPosition.x = this.gameWidth / 2;
-            this.carPosition.y = this.gameHeight * 0.85;
+    handleKeyUp(e) {
+        this.keys[e.key.toLowerCase()] = false;
+    }
+
+    isValidCollectionKey(key) {
+        return /^[0-9a-zA-Z]$/.test(key);
+    }
+
+    handleLaneChange(key) {
+        const laneMap = { 'a': 0, 's': 1, 'd': 2 };
+        if (laneMap.hasOwnProperty(key)) {
+            this.carPosition = laneMap[key];
             this.updateCarPosition();
-        });
+        }
     }
 
-    setupKeyboard() {
-        document.addEventListener('keydown', (e) => {
-            if (!this.gameRunning) return;
+    updateCarPosition() {
+        const laneWidth = 200;
+        const carOffset = 70;
+        this.elements.car.style.left = `${this.carPosition * laneWidth + carOffset}px`;
+    }
 
-            const key = e.key.toLowerCase();
+    handleStarCollection(key) {
+        const targetChar = key.toLowerCase();
+        const starsInLane = this.gameItems.filter(item =>
+            item.type === 'star' &&
+            item.lane === this.carPosition &&
+            item.char.toLowerCase() === targetChar &&
+            this.isInCollectionRange(item)
+        );
 
-            // Handle number keys 0-9 for star collection
-            if (key >= '0' && key <= '9') {
-                this.tryCollectStar(key);
-                e.preventDefault();
+        if (starsInLane.length > 0) {
+            const star = starsInLane[0];
+            this.collectStar(star);
+        }
+    }
+
+    isInCollectionRange(item) {
+        const carBottom = window.innerHeight - 170;
+        const carTop = carBottom - 120;
+        return item.y >= carTop - 50 && item.y <= carBottom + 50;
+    }
+
+    collectStar(star) {
+        this.score++;
+        this.levelProgress++;
+        this.updateLevelProgress();
+
+        if (this.soundEnabled) {
+            if (star.starType === 'letter') {
+                this.soundManager.playLetterSound(star.char.toLowerCase());
+            } else {
+                this.soundManager.playCollectSound();
             }
+        }
 
-            // Handle A, S, D keys for dodging
-            if (['a', 's', 'd'].includes(key)) {
-                this.dodge(key);
-                e.preventDefault();
+        this.removeGameItem(star);
+        this.addCelebrationEffect(star);
+        this.updateDisplay();
+
+        if (this.levelProgress >= this.starsToNextLevel) {
+            this.levelUp();
+        }
+    }
+
+    addCelebrationEffect(star) {
+        const celebration = document.createElement('div');
+        celebration.textContent = '+1 ⭐';
+        celebration.style.cssText = `
+            position: absolute;
+            left: ${star.element.style.left};
+            top: ${star.element.style.top};
+            color: #FFD700;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            animation: celebrationPop 1s ease-out forwards;
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes celebrationPop {
+                0% { transform: scale(0.5); opacity: 1; }
+                50% { transform: scale(1.2); opacity: 1; }
+                100% { transform: scale(1) translateY(-50px); opacity: 0; }
             }
-        });
+        `;
+        document.head.appendChild(style);
+
+        this.elements.road.appendChild(celebration);
+        setTimeout(() => {
+            celebration.remove();
+            style.remove();
+        }, 1000);
+    }
+
+    levelUp() {
+        this.level++;
+        this.levelProgress = 0;
+        this.gameSpeed += 0.3;
+        this.starsToNextLevel = Math.floor(this.starsToNextLevel * 1.2);
+
+        this.showLevelUpScreen();
+
+        if (this.soundEnabled) {
+            this.soundManager.playLevelUpSound();
+        }
+    }
+
+    showLevelUpScreen() {
+        this.isPaused = true;
+        document.getElementById('level-up-text').textContent = `Level ${this.level} Reached!`;
+        this.elements.levelUpScreen.classList.remove('hidden');
+    }
+
+    continueLevelUp() {
+        this.elements.levelUpScreen.classList.add('hidden');
+        this.isPaused = false;
+        this.updateDisplay();
+    }
+
+    updateLevelProgress() {
+        const progressPercent = (this.levelProgress / this.starsToNextLevel) * 100;
+        this.elements.levelProgressBar.style.width = `${progressPercent}%`;
     }
 
     startGame() {
-        this.instructions.style.display = 'none';
-        this.gameOver.style.display = 'none';
-        this.gameRunning = true;
-        this.score = 0;
-        this.timeRemaining = this.gameTimeMs;
-        this.startTime = Date.now();
-        this.obstacles = [];
-        this.stars = [];
-        this.gameSpeed = this.calculateGameSpeed(); // Use speed based on selected level
-        this.carLane = 1;
-        this.dodging = false;
-
-        this.updateCarPosition();
+        this.gameState = 'playing';
+        this.elements.startScreen.classList.add('hidden');
+        this.resetGame();
         this.gameLoop();
-        this.spawnItems();
+        this.startTimer();
     }
 
     resetGame() {
-        this.gameOver.style.display = 'none';
-        this.instructions.style.display = 'block';
+        this.score = 0;
+        this.level = 1;
+        this.levelProgress = 0;
+        this.starsToNextLevel = 10;
+        this.timeRemaining = 120;
+        this.carPosition = 1;
+        this.gameSpeed = 1;
+        this.gameItems = [];
+        this.isPaused = false;
+
+        this.clearGameItems();
+        this.updateCarPosition();
+        this.updateDisplay();
+        this.updateLevelProgress();
+    }
+
+    clearGameItems() {
+        this.gameItems.forEach(item => {
+            if (item.element && item.element.parentNode) {
+                item.element.parentNode.removeChild(item.element);
+            }
+        });
+        this.gameItems = [];
+    }
+
+    pauseGame() {
+        if (this.gameState !== 'playing') return;
+
+        this.isPaused = !this.isPaused;
+        if (this.isPaused) {
+            this.elements.pauseScreen.classList.remove('hidden');
+            this.elements.pauseBtn.textContent = '▶️';
+        } else {
+            this.elements.pauseScreen.classList.add('hidden');
+            this.elements.pauseBtn.textContent = '⏸️';
+        }
+    }
+
+    resumeGame() {
+        this.isPaused = false;
+        this.elements.pauseScreen.classList.add('hidden');
+        this.elements.pauseBtn.textContent = '⏸️';
+    }
+
+    restartGame() {
+        this.gameState = 'menu';
+        this.elements.gameOverScreen.classList.add('hidden');
+        this.elements.pauseScreen.classList.add('hidden');
+        this.elements.levelUpScreen.classList.add('hidden');
+        this.elements.startScreen.classList.remove('hidden');
+        this.clearGameItems();
+    }
+
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        this.elements.soundToggle.textContent = this.soundEnabled ? '🔊' : '🔇';
+        this.soundManager.setEnabled(this.soundEnabled);
+    }
+
+    startTimer() {
+        this.timerInterval = setInterval(() => {
+            if (this.isPaused || this.gameState !== 'playing') return;
+
+            this.timeRemaining--;
+            this.updateDisplay();
+
+            if (this.timeRemaining <= 0) {
+                this.endGame();
+            }
+        }, 1000);
     }
 
     gameLoop() {
-        if (!this.gameRunning) return;
+        if (this.gameState !== 'playing') return;
 
-        this.updateTimer();
-        this.updateCarMovement();
-        this.updateObstacles();
-        this.updateStars();
-        this.checkCollisions();
-        this.updateScore();
-
-        // Check if time is up
-        if (this.timeRemaining <= 0) {
-            this.endGame();
-            return;
+        if (!this.isPaused) {
+            this.spawnGameItems();
+            this.updateGameItems();
+            this.checkCollisions();
         }
 
         requestAnimationFrame(() => this.gameLoop());
     }
 
-    updateTimer() {
-        if (this.gameRunning) {
-            this.timeRemaining = Math.max(0, this.gameTimeMs - (Date.now() - this.startTime));
-        }
+    spawnGameItems() {
+        const currentSpawnRate = this.baseSpawnRate * this.gameSpeed;
 
-        const minutes = Math.floor(this.timeRemaining / 60000);
-        const seconds = Math.floor((this.timeRemaining % 60000) / 1000);
-        this.timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-
-    updateCarMovement() {
-        // Auto-move the car forward slightly (visual effect)
-        const targetX = this.roadLeft + (this.carLane + 0.5) * (this.roadWidth / 3);
-
-        // Handle dodge movement
-        if (this.dodging) {
-            const dodgeProgress = (Date.now() - this.dodgeStartTime) / this.dodgeDuration;
-            if (dodgeProgress >= 1) {
-                this.dodging = false;
+        if (Math.random() < currentSpawnRate) {
+            if (Math.random() < 0.7) {
+                this.spawnStar();
+            } else {
+                this.spawnObstacle();
             }
         }
-
-        // Smooth movement to target position
-        this.carPosition.x += (targetX - this.carPosition.x) * 0.1;
-        this.updateCarPosition();
     }
 
-    updateCarPosition() {
-        this.playerCar.style.left = this.carPosition.x + 'px';
-        this.playerCar.style.bottom = '15vh';
-    }
-
-    spawnItems() {
-        if (!this.gameRunning) return;
-
-        // Adjust spawn probabilities based on speed level
-        const speedObstacleChance = {
-            1: 0.15,  // Very slow - fewer obstacles
-            2: 0.25,  // Slow
-            3: 0.4,   // Medium - original
-            4: 0.5,   // Fast - more obstacles
-            5: 0.6    // Very fast - many obstacles
-        };
-
-        const speedStarChance = {
-            1: 0.5,   // Very slow - fewer stars to manage
-            2: 0.6,   // Slow
-            3: 0.7,   // Medium - original
-            4: 0.8,   // Fast - more typing practice
-            5: 0.9    // Very fast - lots of typing practice
-        };
-
-        // Spawn obstacles
-        if (Math.random() < speedObstacleChance[this.speedLevel]) {
-            this.createObstacle();
-        }
-
-        // Spawn stars frequently for typing practice
-        if (Math.random() < speedStarChance[this.speedLevel]) {
-            this.createStar();
-        }
-
-        // Adjust spawn rate based on speed level and time progression
-        const timeProgress = 1 - (this.timeRemaining / this.gameTimeMs);
-        const baseSpawnDelay = 2000;
-
-        // Speed level affects base spawn rate
-        const speedDelayMultiplier = {
-            1: 1.8,  // Very slow - more time between spawns
-            2: 1.4,  // Slow
-            3: 1.0,  // Medium - original timing
-            4: 0.8,  // Fast - faster spawns
-            5: 0.6   // Very fast - much faster spawns
-        };
-
-        const adjustedDelay = baseSpawnDelay * speedDelayMultiplier[this.speedLevel];
-        const spawnDelay = Math.max(600, adjustedDelay - (timeProgress * 800));
-
-        setTimeout(() => this.spawnItems(), spawnDelay);
-    }
-
-    createObstacle() {
-        const obstacle = document.createElement('div');
-        obstacle.className = 'obstacle';
-        obstacle.innerHTML = '🚙';
-
-        // Place in one of three lanes
+    spawnStar() {
         const lane = Math.floor(Math.random() * 3);
-        const x = this.roadLeft + (lane + 0.5) * (this.roadWidth / 3) - 25;
+        const isLetter = Math.random() < 0.6;
 
-        obstacle.style.left = x + 'px';
-        obstacle.style.top = '-50px';
-        obstacle.dataset.lane = lane;
-
-        this.gameArea.appendChild(obstacle);
-        this.obstacles.push(obstacle);
-    }
-
-    createStar() {
-        const star = document.createElement('div');
-        star.className = 'star';
-
-        // Random number 0-9
-        const number = Math.floor(Math.random() * 10);
-        star.innerHTML = `⭐${number}`;
-        star.dataset.number = number;
-        star.dataset.collected = 'false';
-
-        // Place randomly within the road
-        const x = this.roadLeft + Math.random() * (this.roadWidth - 50);
-        star.style.left = x + 'px';
-        star.style.top = '-50px';
-
-        this.gameArea.appendChild(star);
-        this.stars.push(star);
-    }
-
-    updateObstacles() {
-        this.obstacles.forEach((obstacle, index) => {
-            const currentTop = parseInt(obstacle.style.top) || 0;
-            const newTop = currentTop + this.gameSpeed;
-
-            if (newTop > this.gameHeight) {
-                obstacle.remove();
-                this.obstacles.splice(index, 1);
-            } else {
-                obstacle.style.top = newTop + 'px';
-            }
-        });
-    }
-
-    updateStars() {
-        this.stars.forEach((star, index) => {
-            const currentTop = parseInt(star.style.top) || 0;
-            const newTop = currentTop + this.gameSpeed;
-
-            if (newTop > this.gameHeight) {
-                star.remove();
-                this.stars.splice(index, 1);
-            } else {
-                star.style.top = newTop + 'px';
-            }
-        });
-    }
-
-    tryCollectStar(keyPressed) {
-        this.stars.forEach((star, index) => {
-            if (star.dataset.collected === 'true') return;
-
-            const starNumber = star.dataset.number;
-            const starRect = this.getElementRect(star);
-
-            // Check if star is in collection zone and matches the key
-            const collectionZoneTop = this.gameHeight * 0.4; // 40% from top
-            const collectionZoneBottom = this.gameHeight * 0.8; // 80% from top
-            if (starNumber == keyPressed && starRect.top > collectionZoneTop && starRect.top < collectionZoneBottom) {
-                this.collectStar(star, index);
-            }
-        });
-    }
-
-    dodge(key) {
-        if (this.dodging) return;
-
-        let newLane = this.carLane;
-        switch(key) {
-            case 'a': // Left
-                newLane = Math.max(0, this.carLane - 1);
-                break;
-            case 's': // Stay/brake (keep current lane but signal dodge)
-                break;
-            case 'd': // Right
-                newLane = Math.min(2, this.carLane + 1);
-                break;
+        let char, starType;
+        if (isLetter) {
+            char = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+            starType = 'letter';
+        } else {
+            char = Math.floor(Math.random() * 10).toString();
+            starType = 'number';
         }
 
-        this.carLane = newLane;
-        this.dodging = true;
-        this.dodgeStartTime = Date.now();
+        const star = this.createGameItem('star', lane, char, starType);
+        this.gameItems.push(star);
+    }
 
-        // Visual feedback
-        this.showCelebration('Dodge!', 300);
+    spawnObstacle() {
+        const lane = Math.floor(Math.random() * 3);
+        const obstacle = this.createGameItem('obstacle', lane);
+        this.gameItems.push(obstacle);
+    }
 
-        if (window.soundManager) {
-            window.soundManager.play('engine');
+    createGameItem(type, lane, char = '', starType = '') {
+        const element = document.createElement('div');
+        element.className = type + (starType ? ` ${starType}` : '');
+
+        if (type === 'star') {
+            element.textContent = char;
+        }
+
+        const laneWidth = 200;
+        const itemWidth = type === 'star' ? 80 : 70;
+        const laneOffset = (laneWidth - itemWidth) / 2;
+
+        element.style.left = `${lane * laneWidth + laneOffset}px`;
+        element.style.top = '-80px';
+
+        this.elements.road.appendChild(element);
+
+        return {
+            type,
+            element,
+            lane,
+            char,
+            starType,
+            y: -80,
+            speed: this.baseItemSpeed * this.gameSpeed
+        };
+    }
+
+    updateGameItems() {
+        for (let i = this.gameItems.length - 1; i >= 0; i--) {
+            const item = this.gameItems[i];
+            item.y += item.speed;
+            item.element.style.top = `${item.y}px`;
+
+            if (item.y > window.innerHeight) {
+                this.removeGameItem(item);
+            }
+        }
+    }
+
+    removeGameItem(item) {
+        const index = this.gameItems.indexOf(item);
+        if (index > -1) {
+            this.gameItems.splice(index, 1);
+            if (item.element && item.element.parentNode) {
+                item.element.parentNode.removeChild(item.element);
+            }
         }
     }
 
     checkCollisions() {
-        const carRect = this.getElementRect(this.playerCar);
+        const carY = window.innerHeight - 170;
+        const carHeight = 120;
+        const carWidth = 60;
+        const laneWidth = 200;
+        const carX = this.carPosition * laneWidth + 70;
 
-        // Check obstacle collisions only when not dodging
-        if (!this.dodging) {
-            this.obstacles.forEach((obstacle, index) => {
-                const obstacleRect = this.getElementRect(obstacle);
-                const obstacleLane = parseInt(obstacle.dataset.lane);
+        this.gameItems.forEach(item => {
+            if (item.lane === this.carPosition) {
+                const itemY = item.y;
+                const itemHeight = 70;
 
-                // Check if obstacle is in same lane and close enough
-                if (obstacleLane === this.carLane && this.isColliding(carRect, obstacleRect)) {
-                    this.handleObstacleCollision(obstacle, index);
+                if (itemY + itemHeight >= carY && itemY <= carY + carHeight) {
+                    if (item.type === 'obstacle') {
+                        this.handleObstacleCollision(item);
+                    }
                 }
-            });
-        }
-    }
-
-    getElementRect(element) {
-        const rect = element.getBoundingClientRect();
-        const gameRect = this.gameArea.getBoundingClientRect();
-
-        return {
-            left: rect.left - gameRect.left,
-            top: rect.top - gameRect.top,
-            right: rect.right - gameRect.left,
-            bottom: rect.bottom - gameRect.top,
-            width: rect.width,
-            height: rect.height
-        };
-    }
-
-    isColliding(rect1, rect2) {
-        return !(rect1.right < rect2.left ||
-                rect1.left > rect2.right ||
-                rect1.bottom < rect2.top ||
-                rect1.top > rect2.bottom);
-    }
-
-    collectStar(star, index) {
-        star.dataset.collected = 'true';
-        star.style.transform = 'scale(1.5)';
-        star.style.opacity = '0.5';
-
-        this.score += 1;
-        this.showCelebration(`+1 Star! 🌟`, 800);
-
-        if (window.soundManager) {
-            window.soundManager.play('star');
-        }
-
-        setTimeout(() => {
-            if (star.parentNode) {
-                star.remove();
             }
-            const starIndex = this.stars.indexOf(star);
-            if (starIndex > -1) {
-                this.stars.splice(starIndex, 1);
-            }
-        }, 200);
+        });
     }
 
-    handleObstacleCollision(obstacle, index) {
-        obstacle.remove();
-        this.obstacles.splice(index, 1);
-
-        // Penalty: lose 1 star
+    handleObstacleCollision(obstacle) {
         this.score = Math.max(0, this.score - 1);
-        this.showCelebration('Collision! -1 Star 💥', 1000);
+        this.removeGameItem(obstacle);
 
-        if (window.soundManager) {
-            window.soundManager.play('obstacle');
-        }
-    }
-
-    showCelebration(message, duration = 1000) {
-        const celebration = document.createElement('div');
-        celebration.className = 'celebration';
-        celebration.innerHTML = message;
-        celebration.style.fontSize = '2em';
-        this.gameArea.appendChild(celebration);
-
+        this.elements.car.classList.add('collision-effect');
         setTimeout(() => {
-            if (celebration.parentNode) {
-                celebration.remove();
-            }
-        }, duration);
+            this.elements.car.classList.remove('collision-effect');
+        }, 500);
+
+        if (this.soundEnabled) {
+            this.soundManager.playCollisionSound();
+        }
+
+        this.updateDisplay();
     }
 
-    updateScore() {
-        this.scoreElement.textContent = this.score;
+    updateDisplay() {
+        this.elements.scoreDisplay.textContent = `Stars: ${this.score}`;
+
+        const minutes = Math.floor(this.timeRemaining / 60);
+        const seconds = this.timeRemaining % 60;
+        this.elements.timerDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        this.elements.levelDisplay.textContent = `Level ${this.level}`;
     }
 
     endGame() {
-        this.gameRunning = false;
-        this.finalScore.textContent = this.score;
+        this.gameState = 'ended';
+        clearInterval(this.timerInterval);
 
-        // Performance message based on score
-        let message = "Great job!";
-        if (this.score >= 50) {
-            message = "🌟 Amazing! You're a typing champion! 🌟";
-        } else if (this.score >= 30) {
-            message = "🚗 Excellent driving and typing! 🚗";
-        } else if (this.score >= 15) {
-            message = "👍 Good job! Keep practicing! 👍";
-        } else if (this.score >= 5) {
-            message = "🎯 Nice try! You're getting better! 🎯";
-        } else {
-            message = "🌈 Keep practicing - you'll improve! 🌈";
+        document.getElementById('final-score').textContent = this.score;
+        document.getElementById('final-level').textContent = this.level;
+
+        const performanceMessage = this.getPerformanceMessage();
+        document.getElementById('performance-message').textContent = performanceMessage;
+
+        this.elements.gameOverScreen.classList.remove('hidden');
+
+        if (this.soundEnabled) {
+            this.soundManager.playGameOverSound();
         }
-
-        this.performanceMessage.textContent = message;
-        this.gameOver.style.display = 'block';
-
-        // Clear all game objects
-        this.obstacles.forEach(obstacle => obstacle.remove());
-        this.stars.forEach(star => star.remove());
-        this.obstacles = [];
-        this.stars = [];
     }
 
-    toggleSound() {
-        if (window.soundManager) {
-            window.soundManager.toggle();
-            this.soundToggle.textContent = window.soundManager.enabled ? '🔊' : '🔇';
-        }
+    getPerformanceMessage() {
+        if (this.score >= 50) return "🌟 Amazing typing skills! You're a racing champion!";
+        if (this.score >= 30) return "🎉 Great job! Keep practicing to become even faster!";
+        if (this.score >= 15) return "👍 Good effort! You're improving your typing skills!";
+        return "🚀 Nice try! Practice makes perfect - race again!";
     }
 }
 
-// Start the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     new RacingTutorGame();
 });

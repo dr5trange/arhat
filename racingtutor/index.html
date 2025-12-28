@@ -3,77 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Racing Tutor - Fun Car Racing Game!</title>
+    <title>Racing Tutor - Typing Adventure for Kids</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="game-container">
-        <div class="header">
-            <h1>🏁 Racing Tutor 🏁</h1>
-            <div class="game-stats">
-                <div class="score">Stars: <span id="score">0</span></div>
-                <div class="timer">Time: <span id="timer">2:00</span></div>
-                <div class="speed-display">Speed: <span id="speedLevel">3</span></div>
-            </div>
-            <button id="soundToggle" class="sound-btn">🔊</button>
-        </div>
-
-        <div class="game-area" id="gameArea">
-            <div class="road">
-                <div class="road-marking"></div>
-                <div class="road-marking"></div>
-                <div class="road-marking"></div>
-                <div class="road-marking"></div>
-                <div class="road-marking"></div>
-            </div>
-
-            <div class="player-car" id="playerCar">🚗</div>
-
-            <div class="instructions" id="instructions">
-                <h2>🎮 How to Play Racing Tutor! 🎮</h2>
-                <div class="instruction-section">
-                    <p><strong>🚗 Your car drives automatically!</strong></p>
-                    <p><strong>⭐ Collect Stars:</strong> Press numbers <kbd>0-9</kbd> when you see stars with those numbers</p>
-                    <p><strong>🚙 Avoid Cars:</strong> Press <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to dodge other cars</p>
-                    <p><strong>⏰ Race for 2 minutes and collect as many stars as possible!</strong></p>
-                </div>
-
-                <div class="speed-selector">
-                    <h3>🏎️ Choose Your Speed Level to Start Racing!</h3>
-                    <div class="speed-buttons">
-                        <button class="speed-btn" data-speed="1">1<br><span>Very Slow</span></button>
-                        <button class="speed-btn" data-speed="2">2<br><span>Slow</span></button>
-                        <button class="speed-btn" data-speed="3">3<br><span>Medium</span></button>
-                        <button class="speed-btn" data-speed="4">4<br><span>Fast</span></button>
-                        <button class="speed-btn" data-speed="5">5<br><span>Very Fast</span></button>
-                    </div>
-                    <p class="speed-hint">Click any speed level above to begin your 2-minute race!</p>
+    <div id="game-container">
+        <div id="game-header">
+            <div id="level-info">
+                <span id="level-display">Level 1</span>
+                <div id="level-progress">
+                    <div id="level-progress-bar"></div>
                 </div>
             </div>
-
-            <div class="game-over" id="gameOver" style="display: none;">
-                <h2>🏁 Race Complete! 🏁</h2>
-                <p>Final Stars: <span id="finalScore">0</span></p>
-                <p id="performanceMessage">Great job!</p>
-                <button id="playAgainBtn">Race Again! 🚗💨</button>
+            <div id="score-info">
+                <span id="score">Stars: 0</span>
+                <span id="timer">Time: 2:00</span>
+            </div>
+            <div id="game-controls">
+                <button id="sound-toggle" class="control-btn">🔊</button>
+                <button id="pause-btn" class="control-btn">⏸️</button>
             </div>
         </div>
 
-        <div class="controls">
-            <div class="key-hints">
-                <div class="hint-group">
-                    <span>Collect Stars:</span>
-                    <div class="keys">
-                        <kbd>0</kbd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd><kbd>7</kbd><kbd>8</kbd><kbd>9</kbd>
-                    </div>
-                </div>
-                <div class="hint-group">
-                    <span>Avoid Cars:</span>
-                    <div class="keys">
-                        <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
-                    </div>
-                </div>
+        <div id="game-area">
+            <div id="road">
+                <div class="lane" data-lane="0"></div>
+                <div class="lane" data-lane="1"></div>
+                <div class="lane" data-lane="2"></div>
+                <div id="car"></div>
             </div>
+        </div>
+
+        <div id="instructions">
+            <div class="instruction-row">
+                <span class="key-hint">0-9</span> Collect numbered stars
+            </div>
+            <div class="instruction-row">
+                <span class="key-hint">A-Z</span> Collect letter stars
+            </div>
+            <div class="instruction-row">
+                <span class="key-hint">A S D</span> Change lanes to dodge obstacles
+            </div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+        <div class="screen-content">
+            <h1>🏎️ Racing Tutor</h1>
+            <p>Type to collect stars and avoid obstacles!</p>
+            <p>Each level gets faster as you improve</p>
+            <button id="start-btn" class="game-btn">Start Racing!</button>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="overlay hidden">
+        <div class="screen-content">
+            <h2>⏸️ Game Paused</h2>
+            <button id="resume-btn" class="game-btn">Resume</button>
+            <button id="restart-btn" class="game-btn">Restart</button>
+        </div>
+    </div>
+
+    <div id="level-up-screen" class="overlay hidden">
+        <div class="screen-content">
+            <h2>🎉 Level Up!</h2>
+            <p id="level-up-text">Level 2 Reached!</p>
+            <p>Speed increased - Keep typing!</p>
+            <button id="continue-btn" class="game-btn">Continue</button>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="overlay hidden">
+        <div class="screen-content">
+            <h2 id="game-over-title">🏁 Race Complete!</h2>
+            <div id="final-stats">
+                <p>Final Score: <span id="final-score">0</span> stars</p>
+                <p>Level Reached: <span id="final-level">1</span></p>
+                <p id="performance-message">Great job!</p>
+            </div>
+            <button id="play-again-btn" class="game-btn">Race Again!</button>
         </div>
     </div>
 
