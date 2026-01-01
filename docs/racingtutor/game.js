@@ -15,6 +15,9 @@ class RacingTutorGame {
 
         this.baseItemSpeed = 2;
         this.baseSpawnRate = 0.02;
+        this.lastSpawnY = -200; // Track last spawn position to ensure one per row
+        this.minSpawnGap = 150; // Minimum vertical gap between stars
+        this.announcedItems = new Set(); // Track items that have been announced
 
         this.init();
     }
@@ -62,12 +65,7 @@ class RacingTutorGame {
 
         this.keys[e.key.toLowerCase()] = true;
 
-        if (['a', 's', 'd'].includes(e.key.toLowerCase())) {
-            this.handleLaneChange(e.key.toLowerCase());
-        } else if (this.isValidCollectionKey(e.key)) {
-            this.handleStarCollection(e.key);
-        }
-
+        // Game is now auto-navigating, no manual controls needed
         e.preventDefault();
     }
 
@@ -75,43 +73,10 @@ class RacingTutorGame {
         this.keys[e.key.toLowerCase()] = false;
     }
 
-    isValidCollectionKey(key) {
-        return /^[0-9a-zA-Z]$/.test(key);
-    }
-
-    handleLaneChange(key) {
-        const laneMap = { 'a': 0, 's': 1, 'd': 2 };
-        if (laneMap.hasOwnProperty(key)) {
-            this.carPosition = laneMap[key];
-            this.updateCarPosition();
-        }
-    }
-
     updateCarPosition() {
         const laneWidth = 200;
         const carOffset = 70;
         this.elements.car.style.left = `${this.carPosition * laneWidth + carOffset}px`;
-    }
-
-    handleStarCollection(key) {
-        const targetChar = key.toLowerCase();
-        const starsInLane = this.gameItems.filter(item =>
-            item.type === 'star' &&
-            item.lane === this.carPosition &&
-            item.char.toLowerCase() === targetChar &&
-            this.isInCollectionRange(item)
-        );
-
-        if (starsInLane.length > 0) {
-            const star = starsInLane[0];
-            this.collectStar(star);
-        }
-    }
-
-    isInCollectionRange(item) {
-        const carBottom = window.innerHeight - 170;
-        const carTop = carBottom - 120;
-        return item.y >= carTop - 50 && item.y <= carBottom + 50;
     }
 
     collectStar(star) {
@@ -216,6 +181,7 @@ class RacingTutorGame {
         this.gameSpeed = 1;
         this.gameItems = [];
         this.isPaused = false;
+        this.announcedItems = new Set(); // Clear announced items
 
         this.clearGameItems();
         this.updateCarPosition();
@@ -285,21 +251,68 @@ class RacingTutorGame {
         if (!this.isPaused) {
             this.spawnGameItems();
             this.updateGameItems();
-            this.checkCollisions();
+            this.autoNavigateAndAnnounce();
+            this.autoCollectStars();
         }
 
         requestAnimationFrame(() => this.gameLoop());
     }
 
-    spawnGameItems() {
-        const currentSpawnRate = this.baseSpawnRate * this.gameSpeed;
+    autoNavigateAndAnnounce() {
+        // Find the closest approaching star
+        const carY = window.innerHeight - 170;
+        const announceDistance = 300; // Distance at which to announce the letter
 
-        if (Math.random() < currentSpawnRate) {
-            if (Math.random() < 0.7) {
-                this.spawnStar();
-            } else {
-                this.spawnObstacle();
+        // Sort stars by y position (closest first)
+        const approachingStars = this.gameItems
+            .filter(item => item.type === 'star' && item.y < carY)
+            .sort((a, b) => b.y - a.y);
+
+        if (approachingStars.length > 0) {
+            const closestStar = approachingStars[0];
+
+            // Auto-navigate car to the star's lane
+            if (this.carPosition !== closestStar.lane) {
+                this.carPosition = closestStar.lane;
+                this.updateCarPosition();
             }
+
+            // Announce the letter when it gets close enough
+            if (closestStar.y > carY - announceDistance && !this.announcedItems.has(closestStar.id)) {
+                this.announcedItems.add(closestStar.id);
+                if (this.soundEnabled) {
+                    this.soundManager.speakLetter(closestStar.char);
+                }
+            }
+        }
+    }
+
+    autoCollectStars() {
+        const carY = window.innerHeight - 170;
+        const carHeight = 120;
+
+        // Auto-collect stars that reach the car
+        for (let i = this.gameItems.length - 1; i >= 0; i--) {
+            const item = this.gameItems[i];
+            if (item.type === 'star' && item.lane === this.carPosition) {
+                if (item.y >= carY - 20 && item.y <= carY + carHeight) {
+                    this.collectStar(item);
+                    break; // Only collect one per frame
+                }
+            }
+        }
+    }
+
+    spawnGameItems() {
+        // Check if we can spawn (ensure minimum gap between stars)
+        const lowestStar = this.gameItems.reduce((lowest, item) => {
+            if (item.type === 'star' && item.y < lowest) return item.y;
+            return lowest;
+        }, Infinity);
+
+        // Only spawn if there's enough gap from the last star
+        if (lowestStar === Infinity || lowestStar > this.minSpawnGap) {
+            this.spawnStar();
         }
     }
 
@@ -317,14 +330,10 @@ class RacingTutorGame {
         }
 
         const star = this.createGameItem('star', lane, char, starType);
+        star.id = Date.now() + Math.random(); // Unique ID for tracking announcements
         this.gameItems.push(star);
     }
 
-    spawnObstacle() {
-        const lane = Math.floor(Math.random() * 3);
-        const obstacle = this.createGameItem('obstacle', lane);
-        this.gameItems.push(obstacle);
-    }
 
     createGameItem(type, lane, char = '', starType = '') {
         const element = document.createElement('div');
@@ -376,42 +385,6 @@ class RacingTutorGame {
         }
     }
 
-    checkCollisions() {
-        const carY = window.innerHeight - 170;
-        const carHeight = 120;
-        const carWidth = 60;
-        const laneWidth = 200;
-        const carX = this.carPosition * laneWidth + 70;
-
-        this.gameItems.forEach(item => {
-            if (item.lane === this.carPosition) {
-                const itemY = item.y;
-                const itemHeight = 70;
-
-                if (itemY + itemHeight >= carY && itemY <= carY + carHeight) {
-                    if (item.type === 'obstacle') {
-                        this.handleObstacleCollision(item);
-                    }
-                }
-            }
-        });
-    }
-
-    handleObstacleCollision(obstacle) {
-        this.score = Math.max(0, this.score - 1);
-        this.removeGameItem(obstacle);
-
-        this.elements.car.classList.add('collision-effect');
-        setTimeout(() => {
-            this.elements.car.classList.remove('collision-effect');
-        }, 500);
-
-        if (this.soundEnabled) {
-            this.soundManager.playCollisionSound();
-        }
-
-        this.updateDisplay();
-    }
 
     updateDisplay() {
         this.elements.scoreDisplay.textContent = `Stars: ${this.score}`;
