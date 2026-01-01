@@ -19,6 +19,19 @@ class RacingTutorGame {
         this.minSpawnGap = 150; // Minimum vertical gap between stars
         this.announcedItems = new Set(); // Track items that have been announced
 
+        // Shop and car system - stars persist via localStorage
+        this.totalStars = parseInt(localStorage.getItem('racingTutorStars')) || 0;
+        this.cars = [
+            { id: 'red', name: 'Red Racer', price: 0, color: 'linear-gradient(180deg, #FF4444, #CC0000)', emoji: '🏎️' },
+            { id: 'blue', name: 'Blue Bolt', price: 20, color: 'linear-gradient(180deg, #4444FF, #0000CC)', emoji: '🚙' },
+            { id: 'green', name: 'Green Machine', price: 35, color: 'linear-gradient(180deg, #44FF44, #00CC00)', emoji: '🚗' },
+            { id: 'gold', name: 'Golden Flash', price: 50, color: 'linear-gradient(180deg, #FFD700, #FFA500)', emoji: '✨' },
+            { id: 'purple', name: 'Purple Thunder', price: 75, color: 'linear-gradient(180deg, #9944FF, #6600CC)', emoji: '🔮' },
+            { id: 'rainbow', name: 'Rainbow Rider', price: 100, color: 'linear-gradient(180deg, #FF0000, #FF7F00, #FFFF00, #00FF00, #0000FF, #9400D3)', emoji: '🌈' }
+        ];
+        this.ownedCars = JSON.parse(localStorage.getItem('racingTutorOwnedCars')) || ['red'];
+        this.selectedCar = localStorage.getItem('racingTutorSelectedCar') || 'red';
+
         this.init();
     }
 
@@ -35,6 +48,7 @@ class RacingTutorGame {
             pauseScreen: document.getElementById('pause-screen'),
             levelUpScreen: document.getElementById('level-up-screen'),
             gameOverScreen: document.getElementById('game-over-screen'),
+            shopScreen: document.getElementById('shop-screen'),
             road: document.getElementById('road'),
             car: document.getElementById('car'),
             scoreDisplay: document.getElementById('score'),
@@ -42,8 +56,11 @@ class RacingTutorGame {
             levelDisplay: document.getElementById('level-display'),
             levelProgressBar: document.getElementById('level-progress-bar'),
             soundToggle: document.getElementById('sound-toggle'),
-            pauseBtn: document.getElementById('pause-btn')
+            pauseBtn: document.getElementById('pause-btn'),
+            shopStars: document.getElementById('shop-stars'),
+            carList: document.getElementById('car-list')
         };
+        this.applyCarStyle();
     }
 
     setupEventListeners() {
@@ -58,6 +75,8 @@ class RacingTutorGame {
 
         document.getElementById('sound-toggle').addEventListener('click', () => this.toggleSound());
         document.getElementById('pause-btn').addEventListener('click', () => this.pauseGame());
+        document.getElementById('shop-btn').addEventListener('click', () => this.openShop());
+        document.getElementById('close-shop-btn').addEventListener('click', () => this.closeShop());
     }
 
     handleKeyDown(e) {
@@ -65,8 +84,40 @@ class RacingTutorGame {
 
         this.keys[e.key.toLowerCase()] = true;
 
-        // Game is now auto-navigating, no manual controls needed
+        // Check if a valid letter/digit key was pressed for star collection
+        if (this.isValidCollectionKey(e.key)) {
+            this.handleStarCollection(e.key);
+        }
+
         e.preventDefault();
+    }
+
+    isValidCollectionKey(key) {
+        return /^[0-9a-zA-Z]$/.test(key);
+    }
+
+    handleStarCollection(key) {
+        const targetChar = key.toUpperCase();
+        const carY = window.innerHeight - 170;
+
+        // Large tolerance zone - stars can be collected from 300px above to 100px below the car
+        const collectionTop = carY - 300;
+        const collectionBottom = carY + 100;
+
+        // Find stars in the car's lane that are in collection range
+        const starsInRange = this.gameItems.filter(item =>
+            item.type === 'star' &&
+            item.lane === this.carPosition &&
+            item.y >= collectionTop && item.y <= collectionBottom
+        );
+
+        if (starsInRange.length > 0) {
+            const closestStar = starsInRange[0];
+            // Only collect if the correct key was pressed
+            if (closestStar.char.toUpperCase() === targetChar) {
+                this.collectStar(closestStar);
+            }
+        }
     }
 
     handleKeyUp(e) {
@@ -85,11 +136,7 @@ class RacingTutorGame {
         this.updateLevelProgress();
 
         if (this.soundEnabled) {
-            if (star.starType === 'letter') {
-                this.soundManager.playLetterSound(star.char.toLowerCase());
-            } else {
-                this.soundManager.playCollectSound();
-            }
+            this.soundManager.playCollectSound();
         }
 
         this.removeGameItem(star);
@@ -183,6 +230,9 @@ class RacingTutorGame {
         this.isPaused = false;
         this.announcedItems = new Set(); // Clear announced items
 
+        // Reload totalStars from localStorage to ensure persistence
+        this.totalStars = parseInt(localStorage.getItem('racingTutorStars')) || 0;
+
         this.clearGameItems();
         this.updateCarPosition();
         this.updateDisplay();
@@ -224,6 +274,9 @@ class RacingTutorGame {
         this.elements.levelUpScreen.classList.add('hidden');
         this.elements.startScreen.classList.remove('hidden');
         this.clearGameItems();
+
+        // Reload totalStars from localStorage on restart
+        this.totalStars = parseInt(localStorage.getItem('racingTutorStars')) || 0;
     }
 
     toggleSound() {
@@ -252,7 +305,7 @@ class RacingTutorGame {
             this.spawnGameItems();
             this.updateGameItems();
             this.autoNavigateAndAnnounce();
-            this.autoCollectStars();
+            // Stars are collected by typing the correct letter/digit
         }
 
         requestAnimationFrame(() => this.gameLoop());
@@ -282,22 +335,6 @@ class RacingTutorGame {
                 this.announcedItems.add(closestStar.id);
                 if (this.soundEnabled) {
                     this.soundManager.speakLetter(closestStar.char);
-                }
-            }
-        }
-    }
-
-    autoCollectStars() {
-        const carY = window.innerHeight - 170;
-        const carHeight = 120;
-
-        // Auto-collect stars that reach the car
-        for (let i = this.gameItems.length - 1; i >= 0; i--) {
-            const item = this.gameItems[i];
-            if (item.type === 'star' && item.lane === this.carPosition) {
-                if (item.y >= carY - 20 && item.y <= carY + carHeight) {
-                    this.collectStar(item);
-                    break; // Only collect one per frame
                 }
             }
         }
@@ -400,6 +437,10 @@ class RacingTutorGame {
         this.gameState = 'ended';
         clearInterval(this.timerInterval);
 
+        // Add score to total stars and save immediately
+        this.totalStars += this.score;
+        localStorage.setItem('racingTutorStars', this.totalStars);
+
         document.getElementById('final-score').textContent = this.score;
         document.getElementById('final-level').textContent = this.level;
 
@@ -410,6 +451,101 @@ class RacingTutorGame {
 
         if (this.soundEnabled) {
             this.soundManager.playGameOverSound();
+        }
+    }
+
+    // Shop methods
+    openShop() {
+        if (this.gameState === 'playing') {
+            this.isPaused = true;
+        }
+        this.elements.shopStars.textContent = this.totalStars;
+        this.renderCarList();
+        this.elements.shopScreen.classList.remove('hidden');
+    }
+
+    closeShop() {
+        this.elements.shopScreen.classList.add('hidden');
+        if (this.gameState === 'playing') {
+            this.isPaused = false;
+        }
+    }
+
+    renderCarList() {
+        this.elements.carList.innerHTML = '';
+
+        this.cars.forEach(car => {
+            const isOwned = this.ownedCars.includes(car.id);
+            const isSelected = this.selectedCar === car.id;
+            const canAfford = this.totalStars >= car.price;
+
+            const carItem = document.createElement('div');
+            carItem.className = `car-item ${isOwned ? 'owned' : ''} ${isSelected ? 'selected' : ''}`;
+
+            carItem.innerHTML = `
+                <div class="car-preview" style="background: ${car.color};"></div>
+                <div class="car-name">${car.emoji} ${car.name}</div>
+                <div class="car-price">${car.price === 0 ? 'Free' : car.price + ' ⭐'}</div>
+                ${isOwned ?
+                    `<button class="car-btn ${isSelected ? 'selected-btn' : ''}" data-car-id="${car.id}">
+                        ${isSelected ? '✓ Selected' : 'Select'}
+                    </button>` :
+                    `<button class="car-btn" data-car-id="${car.id}" ${!canAfford ? 'disabled' : ''}>
+                        ${canAfford ? 'Buy' : 'Need ' + (car.price - this.totalStars) + ' more'}
+                    </button>`
+                }
+            `;
+
+            const btn = carItem.querySelector('.car-btn');
+            btn.addEventListener('click', () => {
+                if (isOwned) {
+                    this.selectCar(car.id);
+                } else if (canAfford) {
+                    this.buyCar(car.id, car.price);
+                }
+            });
+
+            this.elements.carList.appendChild(carItem);
+        });
+    }
+
+    buyCar(carId, price) {
+        if (this.totalStars >= price && !this.ownedCars.includes(carId)) {
+            this.totalStars -= price;
+            this.ownedCars.push(carId);
+            this.selectedCar = carId;
+
+            localStorage.setItem('racingTutorStars', this.totalStars);
+            localStorage.setItem('racingTutorOwnedCars', JSON.stringify(this.ownedCars));
+            localStorage.setItem('racingTutorSelectedCar', this.selectedCar);
+
+            this.applyCarStyle();
+            this.elements.shopStars.textContent = this.totalStars;
+            this.renderCarList();
+
+            if (this.soundEnabled) {
+                this.soundManager.playCollectSound();
+            }
+        }
+    }
+
+    selectCar(carId) {
+        if (this.ownedCars.includes(carId)) {
+            this.selectedCar = carId;
+            localStorage.setItem('racingTutorSelectedCar', this.selectedCar);
+            this.applyCarStyle();
+            this.renderCarList();
+        }
+    }
+
+    applyCarStyle() {
+        const car = this.cars.find(c => c.id === this.selectedCar);
+        if (car && this.elements.car) {
+            this.elements.car.style.background = car.color;
+            this.elements.car.setAttribute('data-emoji', car.emoji);
+
+            // Update the ::after pseudo-element via CSS variable
+            this.elements.car.style.setProperty('--car-emoji', `"${car.emoji}"`);
         }
     }
 

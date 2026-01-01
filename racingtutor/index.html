@@ -20,6 +20,7 @@
                 <span id="timer">Time: 2:00</span>
             </div>
             <div id="game-controls">
+                <button id="shop-btn" class="control-btn" title="Car Shop">🛒</button>
                 <button id="sound-toggle" class="control-btn">🔊</button>
                 <button id="pause-btn" class="control-btn">⏸️</button>
             </div>
@@ -36,10 +37,7 @@
 
         <div id="instructions">
             <div class="instruction-row">
-                Watch and listen as letters and numbers approach!
-            </div>
-            <div class="instruction-row">
-                The car collects them automatically.
+                Listen and type the letter/number when it reaches the car!
             </div>
             <div class="instruction-row">
                 <a href="/arhat/" style="color: #fff; text-decoration: underline;">← Back to Games</a>
@@ -50,8 +48,8 @@
     <div id="start-screen" class="overlay">
         <div class="screen-content">
             <h1>🏎️ Racing Tutor</h1>
-            <p>Watch and listen as letters approach!</p>
-            <p>The car will collect them automatically</p>
+            <p>Listen to the letters as they approach!</p>
+            <p>Type the correct letter to collect stars</p>
             <button id="start-btn" class="game-btn">Start Racing!</button>
         </div>
     </div>
@@ -82,6 +80,15 @@
                 <p id="performance-message">Great job!</p>
             </div>
             <button id="play-again-btn" class="game-btn">Race Again!</button>
+        </div>
+    </div>
+
+    <div id="shop-screen" class="overlay hidden">
+        <div class="screen-content shop-content">
+            <h2>🛒 Car Shop</h2>
+            <p>Your Stars: <span id="shop-stars">0</span> ⭐</p>
+            <div id="car-list"></div>
+            <button id="close-shop-btn" class="game-btn">Close Shop</button>
         </div>
     </div>
 

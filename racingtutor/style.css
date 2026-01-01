@@ -163,7 +163,7 @@ body {
 }
 
 #car::after {
-    content: '🏎️';
+    content: var(--car-emoji, '🏎️');
     position: absolute;
     top: 50%;
     left: 50%;
@@ -352,6 +352,102 @@ body {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
+}
+
+/* Shop styles */
+.shop-content {
+    max-width: 500px;
+    width: 90%;
+}
+
+#car-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.car-item {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 3px solid transparent;
+}
+
+.car-item:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+}
+
+.car-item.selected {
+    border-color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.car-item.owned {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.car-preview {
+    width: 50px;
+    height: 90px;
+    margin: 0 auto 10px;
+    border-radius: 25px 25px 8px 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.car-preview::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 45px;
+    background: rgba(135, 206, 250, 0.8);
+    border-radius: 15px;
+}
+
+.car-name {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.car-price {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.car-btn {
+    background: linear-gradient(45deg, #4CAF50, #8BC34A);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.3s ease;
+}
+
+.car-btn:hover {
+    transform: scale(1.05);
+}
+
+.car-btn:disabled {
+    background: #888;
+    cursor: not-allowed;
+}
+
+.car-btn.selected-btn {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
 }
 
 @media (max-width: 768px) {
